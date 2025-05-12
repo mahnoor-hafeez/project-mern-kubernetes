@@ -78,3 +78,4 @@ VITE_API_URL=http://localhost:5005/api
 MIT
 ### Testing Github Actions Workflow
 - This line is for testing purpose.
+- I added a new line.
