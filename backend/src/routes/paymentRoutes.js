@@ -1,0 +1,1 @@
+// Payment routes removed as Stripe integration is no longer needed

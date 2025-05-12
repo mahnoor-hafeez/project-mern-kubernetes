@@ -1,0 +1,1 @@
+// Payment controller removed as Stripe integration is no longer needed
