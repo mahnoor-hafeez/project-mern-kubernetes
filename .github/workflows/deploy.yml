@@ -13,13 +13,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Use Minikube Docker daemon
+    - name: Set Docker environment manually for Minikube
       shell: powershell
       run: |
-        $envScript = & minikube -p minikube docker-env --shell powershell
-        Write-Output "=== Minikube Docker Env ==="
-        Write-Output $envScript
-        Invoke-Expression $envScript
+        $Env:DOCKER_TLS_VERIFY = "1"
+        $Env:DOCKER_HOST = "tcp://127.0.0.1:51460"  
+        $Env:DOCKER_CERT_PATH = "C:\\Users\\HP\\.minikube\\certs"
+        $Env:MINIKUBE_ACTIVE_DOCKERD = "minikube"
 
     - name: Build Docker image
       run: docker build -t mahnoorhafeez/project-mern:latest .
