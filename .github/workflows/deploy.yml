@@ -13,9 +13,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3  # Pulls your repo code into the runner
 
-    - name: Use Minikube Docker daemon
+    - name: Use Minikube Docker daemon (PowerShell)
       run: |
-        minikube -p minikube docker-env | Invoke-Expression
+        $EnvVars = & minikube -p minikube docker-env --shell powershell
+        Invoke-Expression $EnvVars
       shell: powershell
 
     - name: Build Docker image
