@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: mahnoorhafeez/project-mern:latest
+          image: mahnoorhafeez1/project-mern:latest
           ports:
             - containerPort: 5005
 
@@ -44,5 +44,5 @@ spec:
       volumes:
         - name: frontend-dist
           hostPath:
-            path: /c/Users/HP/Downloads/project-scd/app/frontend/dist
+            path: /dist
             type: Directory
