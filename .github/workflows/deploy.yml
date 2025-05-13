@@ -16,27 +16,43 @@ jobs:
     - name: Configure Minikube and Docker
       shell: powershell
       run: |
-        # Ensure Minikube is running (PowerShell compatible syntax)
-        $minikubeStatus = minikube status
-        if (-not ($minikubeStatus -like "*Running*")) {
-          Write-Host "Starting Minikube..."
-          minikube start
+        # Run as administrator (requires runner to have admin privileges)
+        if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+          Write-Host "ERROR: This script must be run as Administrator!"
+          exit 1
         }
 
-        # Configure Docker to use Minikube's Docker daemon
-        $envOutput = minikube -p minikube docker-env --shell powershell
-        Invoke-Expression $envOutput
+        # Start Docker service if not running
+        Start-Service docker
+
+        # Configure Minikube with explicit driver
+        minikube config set driver docker
+
+        # Start Minikube with admin privileges
+        $minikubeStatus = minikube status --output=json | ConvertFrom-Json
+        if (-not ($minikubeStatus.Host -eq "Running")) {
+          Write-Host "Starting Minikube..."
+          minikube start --driver=docker --force
+        }
+
+        # Configure Docker environment
+        $envOutput = minikube -p minikube docker-env --shell powershell | Where-Object { $_ -notmatch "false" }
+        if ($envOutput) {
+          Invoke-Expression $envOutput
+        } else {
+          Write-Host "WARNING: Could not configure Docker environment"
+          exit 1
+        }
 
         # Verify Docker connection
         docker version
-        Write-Host "Docker configured to use Minikube's daemon successfully"
+        Write-Host "Docker configured successfully"
 
     - name: Build Docker image
       shell: powershell
       run: |
-        # Build using Minikube's Docker daemon
         docker build -t mahnoorhafeez/project-mern:latest .
-        Write-Host "Docker image built successfully"
+        Write-Host "Image built successfully"
 
     - name: Push to Docker Hub
       env:
@@ -44,19 +60,19 @@ jobs:
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       shell: powershell
       run: |
-        # Login and push
-        echo $env:DOCKER_PASSWORD | docker login -u $env:DOCKER_USERNAME --password-stdin
+        $securePassword = ConvertTo-SecureString $env:DOCKER_PASSWORD -AsPlainText -Force
+        $credential = New-Object System.Management.Automation.PSCredential ($env:DOCKER_USERNAME, $securePassword)
+        docker login -u $env:DOCKER_USERNAME --password-stdin $env:DOCKER_PASSWORD
         docker push mahnoorhafeez/project-mern:latest
-        Write-Host "Image pushed to Docker Hub successfully"
+        Write-Host "Image pushed successfully"
 
     - name: Deploy to Minikube
       shell: powershell
       run: |
-        # Apply Kubernetes manifests
         kubectl apply -f deployment.yaml
         kubectl apply -f service.yaml
         
         # Verify deployment
-        kubectl get pods
+        kubectl get pods -o wide
         kubectl get services
-        Write-Host "Application deployed to Minikube successfully"
+        Write-Host "Deployment completed successfully"
