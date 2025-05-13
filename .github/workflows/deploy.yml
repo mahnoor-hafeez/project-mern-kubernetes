@@ -13,31 +13,50 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Configure Docker to use Minikube's Docker daemon
+    - name: Configure Minikube and Docker
       shell: powershell
       run: |
-        # Start Minikube if not running
-        minikube status || minikube start
-        
-        # Get and set Minikube Docker env vars
-        $envVars = minikube -p minikube docker-env --shell powershell | Out-String
-        Invoke-Expression $envVars
-        
+        # Ensure Minikube is running (PowerShell compatible syntax)
+        $minikubeStatus = minikube status
+        if (-not ($minikubeStatus -like "*Running*")) {
+          Write-Host "Starting Minikube..."
+          minikube start
+        }
+
+        # Configure Docker to use Minikube's Docker daemon
+        $envOutput = minikube -p minikube docker-env --shell powershell
+        Invoke-Expression $envOutput
+
         # Verify Docker connection
         docker version
+        Write-Host "Docker configured to use Minikube's daemon successfully"
 
     - name: Build Docker image
-      run: docker build -t mahnoorhafeez/project-mern:latest .
+      shell: powershell
+      run: |
+        # Build using Minikube's Docker daemon
+        docker build -t mahnoorhafeez/project-mern:latest .
+        Write-Host "Docker image built successfully"
 
     - name: Push to Docker Hub
       env:
         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      shell: powershell
       run: |
+        # Login and push
         echo $env:DOCKER_PASSWORD | docker login -u $env:DOCKER_USERNAME --password-stdin
         docker push mahnoorhafeez/project-mern:latest
+        Write-Host "Image pushed to Docker Hub successfully"
 
     - name: Deploy to Minikube
+      shell: powershell
       run: |
+        # Apply Kubernetes manifests
         kubectl apply -f deployment.yaml
         kubectl apply -f service.yaml
+        
+        # Verify deployment
+        kubectl get pods
+        kubectl get services
+        Write-Host "Application deployed to Minikube successfully"
