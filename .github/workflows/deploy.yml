@@ -13,15 +13,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
+    # ✅ Start Minikube first (required!)
+    - name: Ensure Minikube is started
+      shell: powershell
+      run: |
+        minikube status
+        if ($LASTEXITCODE -ne 0) {
+          minikube start --driver=docker
+        }
+
     # ✅ Get Minikube Docker env and export it to shell
     - name: Configure Docker to use Minikube daemon
       shell: powershell
       run: |
         $minikubeEnv = & minikube -p minikube docker-env --shell powershell
+        if ($minikubeEnv -eq "false") {
+          Write-Error "Failed to get docker-env from Minikube"
+          exit 1
+        }
         echo "Minikube Docker Env:"
         echo $minikubeEnv
 
-        # Write it to a temporary file
+        # Save it to file
         $minikubeEnv | Out-File -FilePath minikube-docker-env.ps1 -Encoding utf8
 
     # ✅ Import the Docker env
@@ -29,9 +42,8 @@ jobs:
       shell: powershell
       run: |
         . .\minikube-docker-env.ps1
-        docker info  # This will confirm if Minikube's Docker is active
+        docker info
 
-    # ✅ Build and push
     - name: Build Docker image inside Minikube
       run: docker build -t mahnoorhafeez/project-mern:latest .
 
