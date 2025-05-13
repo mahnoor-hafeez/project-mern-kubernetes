@@ -1,4 +1,4 @@
-name: Build and Deploy to Minikube
+name: Deploy to Minikube
 
 on:
   push:
@@ -6,43 +6,37 @@ on:
       - main
 
 jobs:
-  build-deploy:
+  deploy:
     runs-on: self-hosted
 
+    defaults:
+      run:
+        shell: pwsh
+
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Start Minikube if not already running
-      shell: powershell
+    - name: Set up Docker to use Minikube’s Docker daemon
       run: |
-        minikube status
-        if ($LASTEXITCODE -ne 0) {
-          minikube start --driver=docker
-        }
-
-    - name: Configure Docker to use Minikube's daemon
-      shell: powershell
-      run: |
-        $minikubeEnv = & minikube -p minikube docker-env --shell powershell
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Failed to get Minikube Docker env"
-          exit 1
-        }
-        $minikubeEnv | Out-File -FilePath .\minikube-docker-env.ps1 -Encoding utf8
-        . .\minikube-docker-env.ps1
+        & minikube -p minikube docker-env --shell powershell | Invoke-Expression
         docker info
 
-    - name: Build Docker image in Minikube
-      run: docker build -t mahnoorhafeez/project-mern:latest .
-
-    - name: Login to Docker Hub
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-
-    - name: Push Docker image
-      run: docker push mahnoorhafeez/project-mern:latest
-
-    - name: Deploy to Minikube
+    - name: Build Frontend Docker image
       run: |
-        kubectl apply -f deployment.yaml
-        kubectl apply -f service.yaml
+        cd frontend
+        docker build -t myapp-frontend .
+
+    - name: Build Backend Docker image
+      run: |
+        cd backend
+        docker build -t myapp-backend .
+
+    - name: Apply Kubernetes manifests
+      run: |
+        kubectl apply -f k8s/
+
+    - name: Verify Deployment
+      run: |
+        kubectl get pods -A
+        kubectl get services -A
