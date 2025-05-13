@@ -16,15 +16,12 @@ jobs:
     - name: Configure Docker to use Minikube's Docker daemon
       shell: powershell
       run: |
-        # Get Minikube Docker env vars
-        minikube docker-env | Out-String -Stream | ForEach-Object {
-          if ($_ -match '^export (\w+)="?(.+?)"?$') {
-            $varName = $Matches[1]
-            $varValue = $Matches[2] -replace '\\', '\\'
-            [Environment]::SetEnvironmentVariable($varName, $varValue)
-            Write-Host "Set $varName = $varValue"
-          }
-        }
+        # Start Minikube if not running
+        minikube status || minikube start
+        
+        # Get and set Minikube Docker env vars
+        $envVars = minikube -p minikube docker-env --shell powershell | Out-String
+        Invoke-Expression $envVars
         
         # Verify Docker connection
         docker version
