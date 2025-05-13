@@ -16,11 +16,17 @@ jobs:
     - name: Configure Docker to use Minikube's Docker daemon
       shell: powershell
       run: |
-        # These env vars should match your Minikube Docker daemon
-        $Env:DOCKER_TLS_VERIFY = "1"
-        $Env:DOCKER_HOST = "tcp://127.0.0.1:51460"     
-        $Env:DOCKER_CERT_PATH = "$env:USERPROFILE\.minikube\certs"
-        $Env:MINIKUBE_ACTIVE_DOCKERD = "minikube"
+        # Get Minikube Docker env vars
+        minikube docker-env | Out-String -Stream | ForEach-Object {
+          if ($_ -match '^export (\w+)="?(.+?)"?$') {
+            $varName = $Matches[1]
+            $varValue = $Matches[2] -replace '\\', '\\'
+            [Environment]::SetEnvironmentVariable($varName, $varValue)
+            Write-Host "Set $varName = $varValue"
+          }
+        }
+        
+        # Verify Docker connection
         docker version
 
     - name: Build Docker image
