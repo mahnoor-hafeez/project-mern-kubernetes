@@ -13,15 +13,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set Docker environment manually for Minikube
+    # ✅ Get Minikube Docker env and export it to shell
+    - name: Configure Docker to use Minikube daemon
       shell: powershell
       run: |
-        $Env:DOCKER_TLS_VERIFY = "1"
-        $Env:DOCKER_HOST = "tcp://127.0.0.1:51460"  
-        $Env:DOCKER_CERT_PATH = "C:\\Users\\HP\\.minikube\\certs"
-        $Env:MINIKUBE_ACTIVE_DOCKERD = "minikube"
+        $minikubeEnv = & minikube -p minikube docker-env --shell powershell
+        echo "Minikube Docker Env:"
+        echo $minikubeEnv
 
-    - name: Build Docker image
+        # Write it to a temporary file
+        $minikubeEnv | Out-File -FilePath minikube-docker-env.ps1 -Encoding utf8
+
+    # ✅ Import the Docker env
+    - name: Import Minikube Docker environment
+      shell: powershell
+      run: |
+        . .\minikube-docker-env.ps1
+        docker info  # This will confirm if Minikube's Docker is active
+
+    # ✅ Build and push
+    - name: Build Docker image inside Minikube
       run: docker build -t mahnoorhafeez/project-mern:latest .
 
     - name: Login to Docker Hub
